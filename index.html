@@ -258,20 +258,36 @@
           display: inline-block;
       }
 
-      /* --- FACTION SPOTLIGHT --- */
+      /* --- FACTION SPOTLIGHT (CAROUSEL) --- */
       .faction-section {
           padding: var(--spacing-section) 0;
           background: linear-gradient(180deg, var(--void-panel) 0%, var(--void-dark) 100%);
           border-top: 1px solid #333;
           overflow: hidden;
+          position: relative;
       }
 
-      .faction-showcase {
+      .carousel-container {
+          position: relative;
+          width: 100%;
+          overflow: hidden;
+          margin-top: 60px;
+      }
+
+      .carousel-track {
+          display: flex;
+          transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+          width: 100%;
+      }
+
+      .carousel-slide {
+          min-width: 100%;
           display: flex;
           flex-wrap: wrap;
           align-items: center;
+          justify-content: center;
           gap: 60px;
-          margin-top: 60px;
+          padding: 0 50px; /* Space for arrows */
       }
 
       .faction-visual {
@@ -286,7 +302,9 @@
           justify-content: center;
       }
 
-      /* CSS Shape for Ironbound Shield/Symbol */
+      .faction-text { flex: 1; min-width: 300px; max-width: 500px; }
+
+      /* CSS Shape for Faction Symbol - Dynamic styling via JS or Classes */
       .faction-symbol {
           width: 150px;
           height: 150px;
@@ -294,6 +312,7 @@
           transform: rotate(45deg);
           position: relative;
           box-shadow: 0 0 30px rgba(0,0,0,0.8);
+          transition: all 0.5s;
       }
       .faction-symbol::before {
           content: '';
@@ -302,11 +321,17 @@
           border: 2px solid var(--shattered-gold);
       }
 
-      .faction-text { flex: 1; min-width: 300px; }
+      /* Faction Specific Visuals */
+      .slide-ironbound .faction-symbol { border-color: #8b9bb4; }
+      .slide-horde .faction-symbol { border-color: #a31621; transform: rotate(0deg); border-radius: 50%; }
+      .slide-horde .faction-symbol::before { border-color: #ff4d4d; border-radius: 50%; }
+      .slide-chrono .faction-symbol { border-color: #00f2ff; transform: rotate(20deg); }
+      .slide-verdant .faction-symbol { border-color: #2e8b57; border-radius: 10px; }
+      .slide-synod .faction-symbol { border-color: #ffd700; transform: rotate(45deg); border-width: 8px; }
+      .slide-astral .faction-symbol { border-color: #9370db; transform: rotate(180deg); border-radius: 50%; border-style: dotted; }
+      .slide-obsidian .faction-symbol { border-color: #333; background: #000; transform: rotate(0deg); }
 
-      .stat-bar {
-          margin-bottom: 15px;
-      }
+      .stat-bar { margin-bottom: 15px; }
       .stat-label {
           display: flex;
           justify-content: space-between;
@@ -326,7 +351,50 @@
           background: var(--shattered-gold);
           border-radius: 3px;
           box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+          transition: width 1s ease;
       }
+
+      /* Carousel Navigation */
+      .carousel-btn {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          background: rgba(11, 12, 21, 0.8);
+          border: 1px solid var(--shattered-gold);
+          color: var(--shattered-gold);
+          width: 50px;
+          height: 50px;
+          cursor: pointer;
+          z-index: 10;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.5rem;
+          transition: all 0.3s;
+      }
+      .carousel-btn:hover {
+          background: var(--shattered-gold);
+          color: var(--void-dark);
+      }
+      .carousel-btn.prev { left: 20px; }
+      .carousel-btn.next { right: 20px; }
+
+      .carousel-dots {
+          display: flex;
+          justify-content: center;
+          gap: 10px;
+          margin-top: 30px;
+      }
+      .dot {
+          width: 10px;
+          height: 10px;
+          background: rgba(255,255,255,0.2);
+          border-radius: 50%;
+          cursor: pointer;
+          transition: background 0.3s;
+      }
+      .dot.active { background: var(--aether-cyan); box-shadow: 0 0 10px var(--aether-cyan); }
+
 
       /* --- MECHANICS PREVIEW (HEX GRID) --- */
       .mechanics-section {
@@ -441,8 +509,11 @@
           .input-group { flex-direction: column; align-items: center; gap: 15px; }
           input[type="email"] { width: 100%; border-right: 1px solid #333; }
           .btn-submit { width: 100%; }
-          .faction-showcase { flex-direction: column-reverse; }
+          .carousel-slide { flex-direction: column-reverse; gap: 30px; padding: 0 20px; }
           .faction-visual { width: 100%; height: 300px; }
+          .carousel-btn { width: 40px; height: 40px; top: unset; bottom: -60px; transform: none; }
+          .carousel-btn.prev { left: 30%; }
+          .carousel-btn.next { right: 30%; }
       }
   </style>
 </head>
@@ -534,7 +605,7 @@
   </div>
 </section>
 
-<!-- FACTION SPOTLIGHT -->
+<!-- FACTION SPOTLIGHT (CAROUSEL) -->
 <section id="factions" class="faction-section">
   <div class="container">
     <div class="text-center">
@@ -542,32 +613,120 @@
       <p>Choose your allegiance in the battle for the Star.</p>
     </div>
 
-    <div class="faction-showcase">
-      <div class="faction-text">
-        <h3 style="color: var(--shattered-gold); font-size: 2rem;">The Ironbound Union</h3>
-        <p><em>"Steel binds what the Aether breaks."</em></p>
-        <p>Masters of industry and defensive fortification. The Ironbound do not just survive the fracture; they bolt it together. They excel at generating raw Iron and holding territory against aggressive incursions.</p>
+    <div class="carousel-container">
+      <button class="carousel-btn prev" id="prevBtn">&#10094;</button>
+      <button class="carousel-btn next" id="nextBtn">&#10095;</button>
 
-        <div style="margin-top: 30px;">
-          <div class="stat-bar">
-            <div class="stat-label"><span>Defense</span> <span>High</span></div>
-            <div class="bar-container"><div class="bar-fill" style="width: 90%;"></div></div>
+      <div class="carousel-track" id="track">
+
+        <!-- 1. THE IRONBOUND UNION -->
+        <div class="carousel-slide slide-ironbound">
+          <div class="faction-text">
+            <h3 style="color: var(--shattered-gold); font-size: 2rem;">The Ironbound Union</h3>
+            <p><em>"Steel binds what the Aether breaks."</em></p>
+            <p>Masters of industry and defensive fortification. The Ironbound do not just survive the fracture; they bolt it together. They excel at generating raw Iron and holding territory against aggressive incursions.</p>
+            <div style="margin-top: 30px;">
+              <div class="stat-bar"><div class="stat-label"><span>Defense</span> <span>High</span></div><div class="bar-container"><div class="bar-fill" style="width: 90%;"></div></div></div>
+              <div class="stat-bar"><div class="stat-label"><span>Economy</span> <span>Medium</span></div><div class="bar-container"><div class="bar-fill" style="width: 60%;"></div></div></div>
+              <div class="stat-bar"><div class="stat-label"><span>Mobility</span> <span>Low</span></div><div class="bar-container"><div class="bar-fill" style="width: 30%;"></div></div></div>
+            </div>
           </div>
-          <div class="stat-bar">
-            <div class="stat-label"><span>Economy</span> <span>Medium</span></div>
-            <div class="bar-container"><div class="bar-fill" style="width: 60%;"></div></div>
-          </div>
-          <div class="stat-bar">
-            <div class="stat-label"><span>Mobility</span> <span>Low</span></div>
-            <div class="bar-container"><div class="bar-fill" style="width: 30%;"></div></div>
-          </div>
+          <div class="faction-visual"><div class="faction-symbol"></div></div>
         </div>
+
+        <!-- 2. THE FLESH-BOUND HORDE -->
+        <div class="carousel-slide slide-horde">
+          <div class="faction-text">
+            <h3 style="color: #a31621; font-size: 2rem;">The Flesh-Bound Horde</h3>
+            <p><em>"Consume. Adapt. Overrun."</em></p>
+            <p>A biological nightmare born from Aether toxicity. The Horde ignores supply lines, paying for units with their own health. They swarm the map early, overwhelming opponents before defenses can be raised.</p>
+            <div style="margin-top: 30px;">
+              <div class="stat-bar"><div class="stat-label"><span>Defense</span> <span>Low</span></div><div class="bar-container"><div class="bar-fill" style="background: #a31621; width: 20%;"></div></div></div>
+              <div class="stat-bar"><div class="stat-label"><span>Economy</span> <span>Low</span></div><div class="bar-container"><div class="bar-fill" style="background: #a31621; width: 30%;"></div></div></div>
+              <div class="stat-bar"><div class="stat-label"><span>Offense</span> <span>Extreme</span></div><div class="bar-container"><div class="bar-fill" style="background: #a31621; width: 95%;"></div></div></div>
+            </div>
+          </div>
+          <div class="faction-visual"><div class="faction-symbol"></div></div>
+        </div>
+
+        <!-- 3. THE CHRONO-WALKERS -->
+        <div class="carousel-slide slide-chrono">
+          <div class="faction-text">
+            <h3 style="color: #00f2ff; font-size: 2rem;">The Chrono-Walkers</h3>
+            <p><em>"Time is a path, not a wall."</em></p>
+            <p>Nomads displaced from a future that never happened. They manipulate turn order and can "blink" units across the map. Highly mobile but fragile, they rely on hit-and-run tactics to steal victory.</p>
+            <div style="margin-top: 30px;">
+              <div class="stat-bar"><div class="stat-label"><span>Defense</span> <span>Low</span></div><div class="bar-container"><div class="bar-fill" style="background: #00f2ff; width: 30%;"></div></div></div>
+              <div class="stat-bar"><div class="stat-label"><span>Economy</span> <span>Medium</span></div><div class="bar-container"><div class="bar-fill" style="background: #00f2ff; width: 50%;"></div></div></div>
+              <div class="stat-bar"><div class="stat-label"><span>Mobility</span> <span>Extreme</span></div><div class="bar-container"><div class="bar-fill" style="background: #00f2ff; width: 100%;"></div></div></div>
+            </div>
+          </div>
+          <div class="faction-visual"><div class="faction-symbol"></div></div>
+        </div>
+
+        <!-- 4. THE VERDANT SILENCE -->
+        <div class="carousel-slide slide-verdant">
+          <div class="faction-text">
+            <h3 style="color: #2e8b57; font-size: 2rem;">The Verdant Silence</h3>
+            <p><em>"The roots run deeper than steel."</em></p>
+            <p>Guardians of the floating forests who use Aether to accelerate growth. They can spawn terrain tiles and trap opponents in overgrowth. A control faction that reshapes the map to their advantage.</p>
+            <div style="margin-top: 30px;">
+              <div class="stat-bar"><div class="stat-label"><span>Defense</span> <span>Medium</span></div><div class="bar-container"><div class="bar-fill" style="background: #2e8b57; width: 60%;"></div></div></div>
+              <div class="stat-bar"><div class="stat-label"><span>Control</span> <span>High</span></div><div class="bar-container"><div class="bar-fill" style="background: #2e8b57; width: 85%;"></div></div></div>
+              <div class="stat-bar"><div class="stat-label"><span>Mobility</span> <span>Medium</span></div><div class="bar-container"><div class="bar-fill" style="background: #2e8b57; width: 50%;"></div></div></div>
+            </div>
+          </div>
+          <div class="faction-visual"><div class="faction-symbol"></div></div>
+        </div>
+
+        <!-- 5. THE GILDED SYNOD -->
+        <div class="carousel-slide slide-synod">
+          <div class="faction-text">
+            <h3 style="color: #ffd700; font-size: 2rem;">The Gilded Synod</h3>
+            <p><em>"Everything has a price."</em></p>
+            <p>The merchant princes who fund the war. They generate immense wealth and can buy units directly from opponents or bribe mercenaries. They win by out-spending and out-producing everyone else.</p>
+            <div style="margin-top: 30px;">
+              <div class="stat-bar"><div class="stat-label"><span>Defense</span> <span>Low</span></div><div class="bar-container"><div class="bar-fill" style="background: #ffd700; width: 25%;"></div></div></div>
+              <div class="stat-bar"><div class="stat-label"><span>Economy</span> <span>Extreme</span></div><div class="bar-container"><div class="bar-fill" style="background: #ffd700; width: 100%;"></div></div></div>
+              <div class="stat-bar"><div class="stat-label"><span>Mobility</span> <span>Low</span></div><div class="bar-container"><div class="bar-fill" style="background: #ffd700; width: 40%;"></div></div></div>
+            </div>
+          </div>
+          <div class="faction-visual"><div class="faction-symbol"></div></div>
+        </div>
+
+        <!-- 6. THE ASTRAL COVENANT -->
+        <div class="carousel-slide slide-astral">
+          <div class="faction-text">
+            <h3 style="color: #9370db; font-size: 2rem;">The Astral Covenant</h3>
+            <p><em>"We are starlight made manifest."</em></p>
+            <p>Cultists who worship the Shattered Star. They use pure Aether to cast devastating board-wide spells, glassing entire regions. High risk, high reward glass cannons.</p>
+            <div style="margin-top: 30px;">
+              <div class="stat-bar"><div class="stat-label"><span>Defense</span> <span>Very Low</span></div><div class="bar-container"><div class="bar-fill" style="background: #9370db; width: 15%;"></div></div></div>
+              <div class="stat-bar"><div class="stat-label"><span>Magic</span> <span>Extreme</span></div><div class="bar-container"><div class="bar-fill" style="background: #9370db; width: 95%;"></div></div></div>
+              <div class="stat-bar"><div class="stat-label"><span>Economy</span> <span>High</span></div><div class="bar-container"><div class="bar-fill" style="background: #9370db; width: 70%;"></div></div></div>
+            </div>
+          </div>
+          <div class="faction-visual"><div class="faction-symbol"></div></div>
+        </div>
+
+        <!-- 7. THE OBSIDIAN CORE -->
+        <div class="carousel-slide slide-obsidian">
+          <div class="faction-text">
+            <h3 style="color: #444; text-shadow: 0 0 5px white; font-size: 2rem;">The Obsidian Core</h3>
+            <p><em>"Unbreakable. Unstoppable."</em></p>
+            <p>Living golems hewn from the bedrock of the floating isles. They are incredibly slow but nearly impossible to kill. They advance like a glacier, crushing everything in their path.</p>
+            <div style="margin-top: 30px;">
+              <div class="stat-bar"><div class="stat-label"><span>Defense</span> <span>Extreme</span></div><div class="bar-container"><div class="bar-fill" style="background: #555; width: 100%;"></div></div></div>
+              <div class="stat-bar"><div class="stat-label"><span>Economy</span> <span>Low</span></div><div class="bar-container"><div class="bar-fill" style="background: #555; width: 30%;"></div></div></div>
+              <div class="stat-bar"><div class="stat-label"><span>Mobility</span> <span>Very Low</span></div><div class="bar-container"><div class="bar-fill" style="background: #555; width: 10%;"></div></div></div>
+            </div>
+          </div>
+          <div class="faction-visual"><div class="faction-symbol"></div></div>
+        </div>
+
       </div>
 
-      <div class="faction-visual">
-        <!-- CSS Art for Faction Symbol -->
-        <div class="faction-symbol"></div>
-      </div>
+      <div class="carousel-dots" id="dots"></div>
     </div>
   </div>
 </section>
@@ -600,5 +759,54 @@
   </div>
 </footer>
 
+<!-- CAROUSEL SCRIPT -->
+<script>
+  const track = document.getElementById('track');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const dotsContainer = document.getElementById('dots');
+  const slides = Array.from(track.children);
+
+  let currentIndex = 0;
+
+  // Create Dots
+  slides.forEach((_, index) => {
+    const dot = document.createElement('div');
+    dot.classList.add('dot');
+    if (index === 0) dot.classList.add('active');
+    dot.addEventListener('click', () => goToSlide(index));
+    dotsContainer.appendChild(dot);
+  });
+
+  const dots = Array.from(dotsContainer.children);
+
+  function updateDots(index) {
+    dots.forEach(dot => dot.classList.remove('active'));
+    dots[index].classList.add('active');
+  }
+
+  function goToSlide(index) {
+    currentIndex = index;
+    // Loop functionality
+    if (currentIndex < 0) currentIndex = slides.length - 1;
+    if (currentIndex >= slides.length) currentIndex = 0;
+
+    const amountToMove = -currentIndex * 100;
+    track.style.transform = `translateX(${amountToMove}%)`;
+    updateDots(currentIndex);
+  }
+
+  nextBtn.addEventListener('click', () => goToSlide(currentIndex + 1));
+  prevBtn.addEventListener('click', () => goToSlide(currentIndex - 1));
+
+  // Auto-slide every 7 seconds
+  let autoSlide = setInterval(() => goToSlide(currentIndex + 1), 7000);
+
+  // Pause on hover
+  const carouselContainer = document.querySelector('.carousel-container');
+  carouselContainer.addEventListener('mouseenter', () => clearInterval(autoSlide));
+  carouselContainer.addEventListener('mouseleave', () => autoSlide = setInterval(() => goToSlide(currentIndex + 1), 7000));
+
+</script>
 </body>
 </html>
